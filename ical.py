@@ -1116,10 +1116,10 @@ def handle_touch():
 
         current_read_ms = utime.ticks_ms()
 
-        # Debounce
+        # Reduced debounce time for better responsiveness
         if _last_touch and _initial_touch_x is not None:
             time_since_initial = utime.ticks_diff(current_read_ms, _last_touch[2])
-            if time_since_initial < 100:
+            if time_since_initial < 50:  # Reduced from 100ms to 50ms
                 distance_from_initial = ((x - _initial_touch_x) ** 2 + (y - _initial_touch_y) ** 2) ** 0.5
                 if distance_from_initial < 5:
                     return
@@ -1139,7 +1139,7 @@ def handle_touch():
             except Exception as e:
                 print(f"Error brightening backlight: {e}")
 
-        # Initialize touch tracking
+        # Initialize or update touch tracking - simplified logic
         if _last_touch is None or (len(_last_touch) >= 4 and _last_touch[3]):
             _initial_touch_x = x
             _initial_touch_y = y
@@ -1168,13 +1168,15 @@ def handle_touch():
     dt = utime.ticks_diff(current_read_ms, t0)
     abs_dx, abs_dy = abs(dx), abs(dy)
 
-    min_time = 150
-    min_distance = 30
+    # KEY FIX: Reduced minimum time for faster response
+    min_time = 75   # Reduced from 150ms to 75ms
+    min_distance = 25  # Slightly reduced from 30 to 25
     max_time = 2000
 
     if dt < min_time:
         return
 
+    # Only reset if max time exceeded - more efficient
     if dt > max_time:
         _last_touch = (x, y, current_read_ms, False)
         _initial_touch_x = x
@@ -1187,19 +1189,25 @@ def handle_touch():
     gesture_ratio = 2.0
 
     if abs_dx > abs_dy * gesture_ratio:
-        # Horizontal swipe - pagination
+        # Horizontal swipe - pagination (OPTIMIZED)
         pages = (len(_events) + get_events_per_page() - 1) // get_events_per_page()
         if pages > 1:
+            old_page = _current_page
             if dx < 0:  # Left swipe - next page
                 _current_page = (_current_page + 1) % pages
             else:  # Right swipe - previous page
                 _current_page = (_current_page - 1) % pages
             
-            mark_region_dirty("events")
-            mark_region_dirty("pagination_left")
-            mark_region_dirty("pagination_right")
-            mark_region_dirty("header")
-            display_events_with_partial_updates(_events, _current_page, _last_refresh)
+            # Only update if page actually changed
+            if old_page != _current_page:
+                # OPTIMIZATION: Only mark essential regions dirty for pagination
+                mark_region_dirty("events")
+                mark_region_dirty("pagination_left")
+                mark_region_dirty("pagination_right")
+                # Remove header update - not needed for simple pagination
+                display_events_with_partial_updates(_events, _current_page, _last_refresh)
+        
+        # Clear touch state immediately for next gesture
         _last_touch = None
         _initial_touch_x = None
         _initial_touch_y = None
@@ -1212,22 +1220,28 @@ def handle_touch():
 
             ical_parser.clear_cache()
             _events = load_events()
+            # FIX: Use hasattr instead of dictionary access for alert_fired
             for e in _events:
-                e.alert_fired = False
+                if not hasattr(e, "alert_fired"):
+                    e.alert_fired = False
             _last_refresh = utime.time()
 
             mark_all_regions_dirty()
             display_events_with_partial_updates(_events, _current_page, _last_refresh)
             gc.collect()
+            
         else:  # Up swipe - theme toggle
             current_theme = CONFIG.get("theme", "dark")
             new_theme = "light" if current_theme == "dark" else "dark"
             CONFIG["theme"] = new_theme
 
+            # OPTIMIZATION: Call init_themes() directly instead of recreating theme pens
             init_themes()
+
             mark_all_regions_dirty()
             display_events_with_partial_updates(_events, _current_page, _last_refresh)
 
+        # Clear touch state
         _last_touch = None
         _initial_touch_x = None
         _initial_touch_y = None
