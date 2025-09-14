@@ -1,4 +1,4 @@
-This Python application turns a Raspberry Pi Pico W with a Presto display into an intelligent calendar display that fetches and shows events from iCalendar feeds. The project demonstrates hardware integration specific to the Presto's capabilities.
+This Python application turns a Raspberry Pi Pico W with a <a href="https://shop.pimoroni.com/products/presto">Presto</a> display into an intelligent calendar display that fetches and shows events from iCalendar feeds. The project demonstrates hardware integration specific to the Presto's capabilities.
 What It Does
 The application creates a smart calendar interface that:
 
